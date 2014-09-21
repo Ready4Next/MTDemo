@@ -1,0 +1,377 @@
+; ---- minimal chip8 game: megachip8 version ---
+OPTION BINARY
+ALIGN OFF  
+
+    ; V0 - Delay Timer
+    ; V3 - X Background
+    ; V4 - Y pacman - Y Background
+    ; V5 - X Pacman
+    ; V6 - Scroll Lines
+    ; V7 - Inc I
+
+MEGAON				; Set megachip mode (256x192)
+
+; CALL DRAW_BACKGROUND		; Set buffer
+LD V3,25			; X Logo
+LD V4,0				; Y Logo
+CALL DRAW_MEGA8_TITLE		; Draw Logo on buffer
+CLS				; Flip buffer to screen - Clear buffer
+CALL DRAW_BACKGROUND		; Scroll on background
+LD V6, 106			; Set lines to scroll down
+CALL SCROLL_DOWN		; Do the scroll
+LD V6, 53			; Set lines to scroll up
+CALL SCROLL_UP			; Do the scroll
+LD V6, 24			; Scroll 96 pixels to the left
+CALL SCROLL_LEFT		; Do the scroll
+LD V6, 48			; Scroll 192 pixels to the right 
+CALL SCROLL_RIGHT		; Do the scroll
+LD V6, 22			; Scroll 88 pixels to the left
+CALL SCROLL_LEFT		; Do the scroll
+
+LD V3,25			; X Logo
+LD V4,53			; Y Logo
+;CALL DRAW_MEGA8_TITLE		; Draw Mega8 Logo on buffer	
+; CLS
+CALL INIT_JINGLE		; init background music
+CALL INIT_TIMER_LOGO		; 1.25 sec logo sound
+CALL WAITDELAY			; Wait end of sound
+CALL DRAW_BACKGROUND		; Set Buffer == background
+CALL DRAW_SCENE			; Main Draw - Pacmans
+LD V6, 192			; Set lines to scroll up
+CALL SCROLL_UP			; Scroll Screen up
+CALL INIT_MUSIC			; Starts the music !
+CLS				; Put buffer to screen (background + pacmans)
+
+; ================== main loop ================
+MAIN_LOOP:	
+  ;CALL INIT_TIMER
+  CALL DRAW_BACKGROUND
+  BMODE 1			; Blendig mode 1 - 25 %
+  CALL DRAW_MEGA_8
+  CALL DRAW_SCENE		; Main Draw
+  CLS
+  
+  ;CALL INIT_TIMER
+  CALL DRAW_BACKGROUND
+  BMODE 2			; Blending mode 2 - 50 %
+  CALL DRAW_MEGA_8
+  CALL DRAW_SCENE		; Main Draw
+  CLS
+  
+  ;CALL INIT_TIMER
+  CALL DRAW_BACKGROUND
+  BMODE 3			; Blending mode 3 - 75 %
+  CALL DRAW_MEGA_8
+  CALL DRAW_SCENE		; Main Draw
+  CLS
+  
+  CALL DRAW_BACKGROUND
+  BMODE 0			; Blending mode 0 - 100 %
+  CALL DRAW_MEGA_8
+  CALL INIT_TIMER		; init timer
+  CALL DRAW_SCENE		; Main Draw
+  CLS				; Send it
+  
+  ;CALL INIT_TIMER
+  CALL DRAW_BACKGROUND
+  BMODE 3			; Blending mode 3 - 75 %
+  CALL DRAW_MEGA_8
+  CALL DRAW_SCENE		; Main Draw
+  CLS
+  
+  ;CALL INIT_TIMER
+  CALL DRAW_BACKGROUND
+  BMODE 2			; Blending mode 2 - 50 %
+  CALL DRAW_MEGA_8
+  CALL DRAW_SCENE		; Main Draw
+  CLS
+
+  ;CALL INIT_TIMER
+  CALL DRAW_BACKGROUND
+  BMODE 1			; Blending mode 1 - 25 %
+  CALL DRAW_MEGA_8
+  CALL DRAW_SCENE		; Main Draw
+  CLS
+  
+  ;CALL INIT_TIMER
+  CALL DRAW_BACKGROUND
+  CALL DRAW_SCENE		; Main Draw
+  CLS
+
+JP MAIN_LOOP			; Infinite loop
+
+; ================== functions ================
+
+; --- Sound ---
+
+INIT_JINGLE:
+  DB #07, #00			; STOPSND
+  LDHI I, JINGLE_MUSIC		; Put Adress of Jingle music to I
+  NOP				; Necessary with LoadHigh
+  DB #06, #01			; DIGISND - Start music (One time)
+RET
+
+INIT_MUSIC:
+  DB #07, #00			; STOPSND
+  LDHI I, BKG_MUSIC	
+  NOP
+  DB #06, #00			; DIGISND - Start music (Loop)
+RET
+
+; --- Draw entire Scene --
+DRAW_SCENE:  
+  ; DRAW ALL THE PACMANS
+  CALL SAVE_REGISTERS
+  CALL LOAD_PACMAN_REGISTERS  
+  
+  LD V4,5			; Y
+  LD V1, 3
+  
+  BMODE 0			; Full
+  LD V5,V6			; X
+  ADD V6, V1
+  CALL INIT_PACMAN
+  CALL DRAW_PACMAN
+  
+  BMODE 1			; 25 %
+  LD V5,V7
+  ADD V7, V1
+  CALL INIT_PACMAN
+  CALL DRAW_PACMAN
+  
+  BMODE 2			; 50 %
+  LD V5,V8
+  ADD V8, V1
+  CALL INIT_PACMAN
+  CALL DRAW_PACMAN
+  
+  LD V4, 140
+  
+  BMODE 3			; 75 %
+  LD V5,V9
+  SUB V9, V1
+  CALL INIT_PACMAN
+  CALL DRAW_PACMAN
+  
+  BMODE 4			; Add
+  LD V5,VA			; X
+  SUB VA, V1
+  CALL INIT_PACMAN
+  CALL DRAW_PACMAN
+  
+  BMODE 5			; Mul
+  LD V5,VB
+  SUB VB, V1
+  CALL INIT_PACMAN
+  CALL DRAW_PACMAN
+  
+  BMODE 0  			; Reinit Blendig mode
+  
+  CALL SAVE_PACMAN_REGISTERS
+  CALL LOAD_REGISTERS
+RET
+
+; --- Mega Title ---
+
+DRAW_MEGA8_TITLE:
+  CALL INIT_MEGA8_TITLE		; Reset palette
+  CALL DRW_MEGA8_TITLE		; Draw Mega8 on buffer (255 0 255 is transparent color)
+RET
+
+INIT_MEGA8_TITLE:
+  LDHI I, MEGA8_TITLE_PAL	; load pal of 255 colors
+  NOP
+  LDPAL 255
+RET
+  
+DRW_MEGA8_TITLE:
+  SPRW 206
+  SPRH 86
+  LDHI I, MEGA8_TITLE_DATA	; Set I to MEGA8_TITLE_DATA adress
+  NOP
+  DRW V3,V4,1
+RET
+  
+; ---Background Drawing ---
+
+DRAW_BACKGROUND:
+  BMODE 0			; Reinit blending mode
+  CALL INIT_BKG			; init background
+  CALL DRAW_BKG			; Draw background on buffer
+RET
+
+INIT_BKG:
+  SPRW 0
+  SPRH 192
+  LD V3,0
+  LD V4,0
+  LDHI I, BKG_PAL		; load pal of 255 colors
+  NOP
+  LDPAL 255
+RET
+  
+DRAW_BKG:
+  LDHI I, BKG_DATA	   	;Set I to BKG_DATA adress
+  NOP
+  DRW V3,V4,1
+RET
+
+; --- PACMAN drawing  ---
+
+INIT_PACMAN:
+  SPRW 48
+  SPRH 48
+  LDHI I, PACMAN_PAL		; load pal of 255 colors
+  NOP
+  LDPAL 255
+RET
+  
+DRAW_PACMAN:
+  LDHI I, PACMAN_DATA	   	;Set I to PACMAN_DATA adress
+  NOP
+  DRW V5,V4,1
+RET
+
+; ---Background Logo drawing  ---
+
+DRAW_MEGA_8:
+  CALL INIT_MEGA_BKG		; Reset palette
+  CALL DRAW_MEGA_BKG		; Draw Mega8 on buffer (255 0 255 is transparent color)
+RET
+
+INIT_MEGA_BKG:
+  SPRW 0
+  SPRH 192
+  LD V3,0
+  LD V4,0
+  LDHI I, MEGA8_BKG_PAL		; load pal of 255 colors
+  NOP
+  LDPAL 255
+RET
+  
+DRAW_MEGA_BKG:
+  LDHI I, MEGA8_BKG_DATA	;Set I to MEGA8_BKG_DATA adress
+  NOP
+  DRW V3,V4,1
+RET
+  
+; ================== Utils functions ================
+
+; --- Registers ---
+
+REG_BACKUP:
+  DB #00, #00			; Dummy bytes to write in 
+  DB #00, #00
+  DB #00, #00
+  DB #00, #00
+  DB #00, #00
+  DB #00, #00
+  DB #00, #00
+  DB #00, #00
+RET
+
+REG_PACMAN:
+  DB #00, #00			; Initial Registers for
+  DB #00, #00			; Pacman
+  DB #00, #0D			; X position by pacman (6)
+  DB #62, #B7
+  DB #0D, #62
+  DB #B7, #00
+  DB #00, #00
+  DB #00, #00
+RET
+
+SAVE_REGISTERS:
+  LD VE, 16			; Save 16 Registers
+  LD I, REG_BACKUP		; Put address of REG_BACKUP in I
+  LD [I], VE			; Put 16 Registers (V0-F) in the Address inside of I
+RET
+
+LOAD_REGISTERS:
+  LD VE, 16
+  LD I, REG_BACKUP		; Put address of REG_BACKUP in I
+  LD VE, [I]			; Load 16 registers
+RET
+
+SAVE_PACMAN_REGISTERS:
+  LD VE, 16			; Save 16 Registers
+  LD I, REG_PACMAN		; Put address of REG_BACKUP in I
+  LD [I], VE			; Put 16 Registers (V0-F) in the Address inside of I
+RET
+
+LOAD_PACMAN_REGISTERS:
+  LD VE, 16
+  LD I, REG_PACMAN		; Put address of REG_PACMAN in I
+  LD VE, [I]			; Load 16 registers
+RET
+
+; --- Timer functions ---
+
+INIT_TIMER_SCROLL:
+  LD V0, 2
+  LD DT, V0			; Set delay to 2x60 Hz = 33,33 ms
+RET
+
+INIT_TIMER_LOGO:
+  LD V0, 75
+  LD DT, V0			; Set delay to 75x60Hz = 1,25 sec
+RET
+
+INIT_TIMER:
+  LD V0, 30			; Set delay to 30x60 Hz = 500 ms
+  LD DT, V0
+RET
+
+; --- Wait function ---
+; Parameter: V0 = ticks to wait
+
+WAITDELAY:
+  LD V0,DT	   		;Set V0 to DelayTimer
+  SE V0,0	   		;Check zero
+  JP WAITDELAY     
+RET  
+
+; --- Scroll Functions ---
+; V6 : Number of line / 4 pixels to scroll
+
+SCROLL_UP:
+  CALL INIT_TIMER_SCROLL
+  DB #00, #B1		; Scroll Up 1 Line
+  CALL WAITDELAY
+  LD V1, 1
+  SUB V6, V1		; DEC V6
+  SE V6, 0		; V6 == 0 ?
+  JP SCROLL_UP		; No ? Continue
+RET			; Yes ? Return
+
+SCROLL_DOWN:
+  CALL INIT_TIMER_SCROLL
+  DB #00, #C1		; Scroll Down 1 Line
+  CALL WAITDELAY
+  LD V1, 1
+  SUB V6, V1		; DEC V6
+  SE V6, 0		; V6 == 0 ?
+  JP SCROLL_DOWN	; No ? Continue
+RET			; Yes ? Return
+
+SCROLL_LEFT:
+  CALL INIT_TIMER_SCROLL
+  LD VF, 1
+  DB #00, #FC		; Scroll Left 4 Pix
+  CALL WAITDELAY
+  LD V1, 4
+  SUB V6, V1		; DEC V6
+  SE VF, 0		; V6 == 0 ?
+  JP SCROLL_LEFT	; No ? Continue
+RET			; Yes ? Return
+
+SCROLL_RIGHT:
+  CALL INIT_TIMER_SCROLL
+  LD VF, 1
+  DB #00, #FB		; Scroll Right 4 Pix
+  CALL WAITDELAY
+  LD V1, 4
+  SUB V6, V1		; DEC V6
+  SE VF, 0		; V6 == 0 ?
+  JP SCROLL_RIGHT	; No ? Continue
+RET			; Yes ? Return
